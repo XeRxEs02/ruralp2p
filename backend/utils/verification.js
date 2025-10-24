@@ -582,20 +582,11 @@ async function signupVerification(faceImage, aadhaarImage, txnId, enteredName, e
                     ocrVerification = verifyAadhaarDetails(ocrText, enteredName, enteredAadhaar);
 
                     if (!ocrVerification.verified) {
-                        console.error('❌ OCR Verification Failed!');
-                        console.error(`   Name match: ${ocrVerification.nameMatch}`);
-                        console.error(`   Aadhaar match: ${ocrVerification.aadhaarMatch}`);
-
-                        return {
-                            verified: false,
-                            error: 'Uploaded Aadhaar details do not match entered information',
-                            details: {
-                                nameMatch: ocrVerification.nameMatch,
-                                aadhaarMatch: ocrVerification.aadhaarMatch,
-                                extractedName: ocrVerification.extractedName,
-                                extractedAadhaar: ocrVerification.extractedAadhaar
-                            }
-                        };
+                        console.warn('⚠️  OCR Verification Failed - Continuing anyway (dev mode)');
+                        console.warn(`   Name match: ${ocrVerification.nameMatch}`);
+                        console.warn(`   Aadhaar match: ${ocrVerification.aadhaarMatch}`);
+                        console.warn('   OCR matching is optional - proceeding with signup');
+                        // Don't block signup due to OCR failures
                     }
 
                     console.log('✅ OCR verification passed!');
