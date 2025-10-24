@@ -8,7 +8,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { LogIn, User, Lock, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { tokenManager } from "@/lib/api";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -34,25 +33,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      // Use the auth context login function instead of direct fetch
+      const success = await login({
+        email: formData.uniqueId,
+        password: formData.password,
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Backend returns { success, data: { token, user } }
-        const token = data?.data?.token ?? data?.token;
-        if (!token) {
-          throw new Error("Missing token in response");
-        }
-        tokenManager.set(token);
-        toast.success("Login successful!");
+      if (success) {
         navigate("/dashboard");
-      } else {
-        toast.error(data.error || "Login failed");
       }
     } catch (error) {
       toast.error("Login error");

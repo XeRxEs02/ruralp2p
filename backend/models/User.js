@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema({
   faceEmbedding: { type: [Number] }, // 128-dimensional face descriptor
   lastFaceVerification: { type: Date }, // Track last face verification
 
+  // Document storage paths
+  aadharDocument: { type: String }, // Path to Aadhar document image
+  faceImage: { type: String }, // Path to face image
+
   // DigiLocker verification fields
   digilockerVerified: { type: Boolean, default: false },
   digilockerData: {

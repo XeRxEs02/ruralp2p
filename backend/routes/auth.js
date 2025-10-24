@@ -262,10 +262,13 @@ router.post('/login', async (req, res) => {
         id: user._id,
         email: user.email,
         fullName: user.fullName,
+        phone: user.phone,
         role: user.role,
         walletAddress: user.walletAddress,
         kycVerified: user.kycVerified,
         faceVerified: user.faceVerified,
+        aadharDocument: user.aadharDocument,
+        faceImage: user.faceImage
       },
     },
   });
@@ -335,10 +338,13 @@ router.post('/login-with-face', upload.single('faceImage'), async (req, res) => 
           id: user._id,
           email: user.email,
           fullName: user.fullName,
+          phone: user.phone,
           role: user.role,
           walletAddress: user.walletAddress,
           kycVerified: user.kycVerified,
           faceVerified: user.faceVerified,
+          aadharDocument: user.aadharDocument,
+          faceImage: user.faceImage
         },
       },
     });
@@ -385,10 +391,13 @@ router.get('/verify', authenticateToken, async (req, res) => {
       id: user._id,
       email: user.email,
       fullName: user.fullName,
+      phone: user.phone,
       role: user.role,
       walletAddress: user.walletAddress,
       kycVerified: user.kycVerified,
       faceVerified: user.faceVerified,
+      aadharDocument: user.aadharDocument,
+      faceImage: user.faceImage
     },
   });
 });
@@ -474,8 +483,30 @@ router.post('/verify-face', upload.fields([{ name: 'faceImage' }, { name: 'aadha
 
     console.log('✅ Biometric data captured successfully');
 
-    // STEP 3: Update user with verified status and REAL data
-    console.log('💾 Step 3: Saving verification data...');
+    // STEP 3: Save actual document images to file system
+    console.log('💾 Step 3: Saving document images...');
+
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    // Create uploads directory if it doesn't exist
+    const uploadDir = path.join(__dirname, '../../uploads');
+    await fs.mkdir(uploadDir, { recursive: true }).catch(console.error);
+
+    // Save Aadhar document image
+    const aadharFilename = `aadhar-${user._id}-${Date.now()}.jpg`;
+    const aadharPath = path.join(uploadDir, aadharFilename);
+    await fs.writeFile(aadharPath, aadharImage);
+    user.aadharDocument = `/uploads/${aadharFilename}`;
+
+    // Save face image
+    const faceFilename = `face-${user._id}-${Date.now()}.jpg`;
+    const facePath = path.join(uploadDir, faceFilename);
+    await fs.writeFile(facePath, faceImage);
+    user.faceImage = `/uploads/${faceFilename}`;
+
+    // STEP 4: Update user with verified status and REAL data
+    console.log('💾 Step 4: Saving verification data...');
 
     user.faceVerified = true;
     user.kycVerified = true;
@@ -499,8 +530,8 @@ router.post('/verify-face', upload.fields([{ name: 'faceImage' }, { name: 'aadha
 
     console.log('✅ User data updated with REAL embeddings, hash, and DigiLocker verification');
 
-    // STEP 4: Send OTP
-    console.log('📱 Step 4: Sending OTP...');
+    // STEP 5: Send OTP
+    console.log('📱 Step 5: Sending OTP...');
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[email] = otp;

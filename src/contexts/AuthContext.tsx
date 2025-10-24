@@ -7,17 +7,38 @@ interface User {
   id: string;
   email: string;
   fullName: string;
+  phone: string;
   walletAddress: string;
   kycVerified: boolean;
   faceVerified: boolean;
   role: "Borrower" | "Lender";
+  aadharDocument?: string;
+  faceImage?: string;
+}
+
+interface LoginData {
+  email: string;
+  password: string;
+}
+
+interface RegisterData {
+  fullName: string;
+  email: string;
+  phone: string;
+  role: "Borrower" | "Lender";
+  aadharNumber: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: User;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: any) => Promise<boolean>;
+  login: (data: LoginData) => Promise<boolean>;
+  register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -51,32 +72,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(false);
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const response = await authApi.login({ email, password });
+  const login = async (data: LoginData): Promise<boolean> => {
+    // For login, we're making a direct fetch call as in Login.tsx
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uniqueId: data.email, // Map email to uniqueId for backend
+          password: data.password,
+        }),
+      });
 
-    if (response.success && response.data) {
-      const data = response.data as any;
-      tokenManager.set(data.token);
-      setUser(data.user);
-      toast.success("Welcome back!");
-      return true;
-    } else {
-      toast.error(response.error || "Login failed");
+      const dataResponse = await response.json();
+
+      if (dataResponse.success) {
+        // Backend returns { success, data: { token, user } }
+        const token = dataResponse?.data?.token ?? dataResponse?.token;
+        const userData = dataResponse?.data?.user;
+        if (!token) {
+          throw new Error("Missing token in response");
+        }
+        tokenManager.set(token);
+        setUser(userData);
+        toast.success("Welcome back!");
+        return true;
+      } else {
+        toast.error(dataResponse.error || "Login failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Login error: Network error");
       return false;
     }
   };
 
-  const register = async (userData: any): Promise<boolean> => {
-    const response = await authApi.register(userData);
+  const register = async (userData: RegisterData): Promise<boolean> => {
+    // For registration, we're making a direct fetch call as in Signup.tsx
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
 
-    if (response.success && response.data) {
-      const data = response.data as any;
-      tokenManager.set(data.token);
-      setUser(data.user);
-      toast.success("Account created successfully!");
-      return true;
-    } else {
-      toast.error(response.error || "Registration failed");
+      const data = await response.json();
+      if (data.success) {
+        // Registration successful, but we don't have token/user data yet
+        // The user will be redirected to face verification
+        toast.success(
+          "Personal details submitted! Proceed to face verification."
+        );
+        return true;
+      } else {
+        toast.error(data.error || "Registration failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Registration error: Network error");
       return false;
     }
   };

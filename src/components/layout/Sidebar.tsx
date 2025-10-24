@@ -34,9 +34,6 @@ const lenderNavItems = [
 export const Sidebar = () => {
   const { user } = useAuth();
 
-  // Debug: Log user role
-  console.log("Sidebar - User role:", user?.role);
-
   const navItems = user?.role === "Lender" ? lenderNavItems : borrowerNavItems;
 
   return (

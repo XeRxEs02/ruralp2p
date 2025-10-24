@@ -18,6 +18,7 @@ import BorrowerLoans from "./pages/BorrowerLoans";
 import RepayLoan from "./pages/RepayLoan";
 import ValidateDocuments from "./pages/ValidateDocuments";
 import Documents from "./pages/Documents";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                 element={<ValidateDocuments />}
               />
               <Route path="/documents" element={<Documents />} />
+              <Route path="/settings" element={<Settings />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
