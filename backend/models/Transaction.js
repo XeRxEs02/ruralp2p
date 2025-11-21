@@ -75,8 +75,7 @@ const transactionSchema = new mongoose.Schema({
   // Blockchain Integration
   txnHash: {
     type: String,
-    sparse: true,
-    index: true
+    sparse: true
   },
   
   blockchainNetwork: {

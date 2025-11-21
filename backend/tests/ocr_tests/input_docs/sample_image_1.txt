@@ -1,0 +1,1 @@
+This is sample OCR text for testing accuracy. The OCR algorithm should extract this text with high precision. This includes various characters, punctuation marks, and standard formatting.

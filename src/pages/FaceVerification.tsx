@@ -93,16 +93,17 @@ const FaceVerification = () => {
         });
 
         const data = await response.json();
-        if (data.verified) {
+        if (data.success) {
           setProgress(100);
           setVerified(true);
-          toast.success('Face and document verified!');
+          toast.success('Face and document verified! OTP sent.');
           setTimeout(() => navigate('/otp-verification'), 2000);
         } else {
-          toast.error('Verification failed');
+          toast.error(data.error || 'Verification failed');
         }
       } catch (error) {
-        toast.error('Verification error');
+        console.error('Verification error:', error);
+        toast.error('Verification error: ' + (error.message || 'Network error'));
       }
 
       setVerifying(false);

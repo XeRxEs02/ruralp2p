@@ -19,6 +19,7 @@ import RepayLoan from "./pages/RepayLoan";
 import ValidateDocuments from "./pages/ValidateDocuments";
 import Documents from "./pages/Documents";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
                 element={<ValidateDocuments />}
               />
               <Route path="/documents" element={<Documents />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
 

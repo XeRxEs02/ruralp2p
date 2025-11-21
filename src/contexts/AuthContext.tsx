@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { authApi, tokenManager } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { requestNotificationPermission, getFCMToken, onMessageListener } from "@/firebase";
 
 interface User {
   id: string;
@@ -17,7 +18,7 @@ interface User {
 }
 
 interface LoginData {
-  email: string;
+  uniqueId: string;
   password: string;
 }
 
@@ -54,7 +55,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     verifyAuth();
+    setupFirebaseListener();
   }, []);
+
+  const setupFirebaseListener = async () => {
+    try {
+      // Listen for Firebase messages when app is in foreground
+      const messageListener = await onMessageListener();
+      if (messageListener) {
+        toast.success(messageListener.notification?.title || 'New Notification', {
+          description: messageListener.notification?.body,
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error('Error setting up Firebase listener:', error);
+    }
+  };
 
   const verifyAuth = async () => {
     const token = tokenManager.get();
@@ -79,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uniqueId: data.email, // Map email to uniqueId for backend
+          uniqueId: data.uniqueId,
           password: data.password,
         }),
       });
@@ -95,6 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         tokenManager.set(token);
         setUser(userData);
+
+        // Skip Firebase notifications setup for demo
+        console.log("Login successful - Firebase notifications disabled for demo");
+
         toast.success("Welcome back!");
         return true;
       } else {

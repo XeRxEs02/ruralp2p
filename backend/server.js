@@ -2,56 +2,38 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-// Import existing routes
+// Import database connection
+const connectDB = require('./config/db');
+
+// Import routes
 const authRoutes = require('./routes/auth');
-const loanRoutes = require('./routes/loans');
-const faceRoutes = require('./routes/face');
-const analyticsRoutes = require('./routes/analytics');
-const walletRoutes = require('./routes/wallet');
-const userRoutes = require('./routes/user');
-
-// Import new integrated routes
-const paymentRoutes = require('./routes/paymentRoutes');
+const loanRoutes = require('./routes/loanRoutes');
+const blockchainRoutes = require('./routes/blockchainRoutes');
+const documentRoutes = require('./routes/documentRoutes');
+const assetRoutes = require('./routes/assetRoutes');
+const seasonalRepaymentRoutes = require('./routes/seasonalRepaymentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const syncRoutes = require('./routes/syncRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 
-// Import services and utilities
-const eventBus = require('./utils/eventBus');
+// Import logger
+const logger = require('./utils/logger');
+
+// Import services
 const blockchainService = require('./services/blockchainService');
-const firebaseService = require('./services/firebaseService');
-const twilioService = require('./services/twilioService');
+const { repaymentFSMService } = require('./services/repaymentFSM');
 
 const app = express();
 const httpServer = createServer(app);
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-// MongoDB Connection
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ruralconnect';
-mongoose.connect(mongoUri, {
-  serverSelectionTimeoutMS: 5000,
-}).then(() => {
-  console.log('✅ Connected to MongoDB successfully!');
-}).catch(err => {
-  console.error('❌ MongoDB connection failed:', err.message);
-  console.log('⚠️  Server will continue to run without database connection');
-});
-
-const db = mongoose.connection;
-db.on('error', (err) => {
-  console.error('MongoDB error:', err.message);
-});
-db.on('connected', () => {
-  console.log('🔗 MongoDB connection established');
-});
-db.on('disconnected', () => {
-  console.log('🔌 MongoDB disconnected');
-});
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(helmet({
@@ -66,7 +48,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: ['http://localhost:5000', 'http://192.168.29.142:5000', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
   credentials: true,
 }));
 
@@ -84,75 +66,84 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Routes
+// Add HTTP logging middleware
+app.use(logger.httpLogger);
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/loans', loanRoutes);
-app.use('/api/face', faceRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/wallet', walletRoutes);
-app.use('/api/user', userRoutes);
-
-// New integrated routes
 app.use('/api/payments', paymentRoutes);
+app.use('/api/blockchain', blockchainRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/seasonal-repayment', seasonalRepaymentRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/sync', syncRoutes);
+app.use('/api/health', healthRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Backend server is running',
-    timestamp: new Date(),
-    uptime: process.uptime(),
-    services: {
-      mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      blockchain: blockchainService.getNetworkInfo().mockMode ? 'mock' : 'operational',
-      firebase: firebaseService.getStatus().mockMode ? 'mock' : 'operational',
-      twilio: twilioService.getStatus().mockMode ? 'mock' : 'operational'
-    }
-  });
-});
-
-// Clear database endpoint (for development only)
-app.post('/api/clear-db', async (req, res) => {
+// Test blockchain integration
+app.get('/api/test-blockchain', async (req, res) => {
   try {
-    const db = mongoose.connection.db;
-    const collections = await db.listCollections().toArray();
-
-    for (const collection of collections) {
-      await db.collection(collection.name).drop();
-      console.log(`🗑️  Dropped collection: ${collection.name}`);
-    }
+    const networkInfo = blockchainService.getNetworkInfo();
+    const gasPrice = await blockchainService.getGasPrice();
+    const counter = await blockchainService.getLoanCounter();
 
     res.json({
       success: true,
-      message: 'Database cleared successfully',
-      droppedCollections: collections.map(c => c.name)
+      message: 'Blockchain integration test',
+      data: {
+        network: networkInfo,
+        gasPrice,
+        loanCounter: counter,
+        contractAddress: blockchainService.contractAddresses.loanContract,
+      }
     });
   } catch (error) {
-    console.error('Error clearing database:', error);
+    console.error('Blockchain test error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to clear database'
+      error: 'Blockchain test failed',
+      details: error.message
     });
   }
 });
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ success: false, error: 'Endpoint not found' });
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    availableEndpoints: [
+      'GET /api/health',
+      'GET /api/test-blockchain',
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+      'POST /api/auth/send-otp',
+      'POST /api/auth/verify-otp',
+      'POST /api/loans/create',
+      'GET /api/blockchain/network-info',
+      'POST /api/assets/register',
+      'POST /api/assets/:assetId/tokenize',
+      'GET /api/assets',
+      'POST /api/seasonal-repayment/create',
+      'POST /api/seasonal-repayment/payment',
+    ]
+  });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, error: 'Internal server error' });
+  console.error('Server error:', err.stack);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
 });
 
 // Setup WebSocket server for real-time communication
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5000', 'http://192.168.29.142:5000', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -171,31 +162,8 @@ io.on('connection', (socket) => {
     socket.emit('authenticated', { success: true, message: 'Successfully authenticated', userId });
   });
 
-  socket.on('sync:request', (data) => {
-    eventBus.emitEvent('sync.websocket_request', {
-      userId: socket.userId,
-      socketId: socket.id,
-      data
-    });
-  });
-
-  socket.on('notification:read', (data) => {
-    eventBus.emitEvent('notification.websocket_read', {
-      userId: socket.userId,
-      notificationId: data.notificationId,
-      socketId: socket.id
-    });
-  });
-
   socket.on('disconnect', (reason) => {
     console.log(`WebSocket client disconnected: ${socket.id}, reason: ${reason}`);
-    if (socket.userId) {
-      eventBus.emitEvent('user.websocket_disconnected', {
-        userId: socket.userId,
-        socketId: socket.id,
-        reason
-      });
-    }
   });
 
   socket.on('error', (error) => {
@@ -203,51 +171,18 @@ io.on('connection', (socket) => {
   });
 });
 
-// Event bus handlers for real-time notifications
-eventBus.on('notification.websocket.send', (data) => {
-  if (io && data.userId) {
-    io.to(`user:${data.userId}`).emit('notification:new', {
-      notificationId: data.notificationId,
-      title: data.title,
-      message: data.message,
-      type: data.type,
-      timestamp: data.timestamp
-    });
-  }
-});
-
-eventBus.on('payment.successful', (data) => {
-  if (io) {
-    io.to(`user:${data.borrowerId}`).emit('payment:successful', {
-      transactionId: data.transactionId,
-      amount: data.amount,
-      loanId: data.loanId
-    });
-    if (data.lenderId) {
-      io.to(`user:${data.lenderId}`).emit('payment:received', {
-        transactionId: data.transactionId,
-        amount: data.amount,
-        loanId: data.loanId
-      });
-    }
-  }
-});
-
-eventBus.on('transaction.confirmed', (data) => {
-  if (io && data.borrowerId) {
-    io.to(`user:${data.borrowerId}`).emit('transaction:confirmed', {
-      transactionId: data.transactionId,
-      txnHash: data.txnHash,
-      loanId: data.loanId
-    });
-  }
-});
-
+// Start server
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Backend server running on port ${PORT}`);
+  console.log(`🚀 RuralConnect Backend Server running on port ${PORT}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
   console.log(`💾 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⛓️  Blockchain: ${blockchainService.getNetworkInfo().currentNetwork} (${blockchainService.getNetworkInfo().mockMode ? 'Mock' : 'Live'})`);
-  console.log(`🔥 Firebase: ${firebaseService.getStatus().mockMode ? 'Mock' : 'Live'}`);
-  console.log(`📱 Twilio: ${twilioService.getStatus().mockMode ? 'Mock' : 'Live'}`);
+  console.log(`📄 Contract: ${blockchainService.contractAddresses.loanContract}`);
+  console.log(`\n📋 Available Endpoints:`);
+  console.log(`   Health Check: GET /api/health`);
+  console.log(`   Test Blockchain: GET /api/test-blockchain`);
+  console.log(`   Register: POST /api/auth/register`);
+  console.log(`   Login: POST /api/auth/login`);
+  console.log(`   Create Loan: POST /api/loans/create`);
+  console.log(`   Blockchain Info: GET /api/blockchain/network-info`);
 });

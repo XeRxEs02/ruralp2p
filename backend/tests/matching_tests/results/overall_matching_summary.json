@@ -1,0 +1,91 @@
+[
+  {
+    "matchedPairs": [
+      {
+        "borrowerId": "B1",
+        "lenderId": "L1",
+        "loanAmount": 50000,
+        "compatibilityScore": 0.97,
+        "timestamp": "2025-11-20T13:26:57.832Z"
+      },
+      {
+        "borrowerId": "B2",
+        "lenderId": "L2",
+        "loanAmount": 75000,
+        "compatibilityScore": 0.97,
+        "timestamp": "2025-11-20T13:26:57.832Z"
+      }
+    ],
+    "unmatchedBorrowers": [],
+    "totalMatchedAmount": 125000,
+    "averageCompatibility": 0.97,
+    "scenario": "Standard Case"
+  },
+  {
+    "matchedPairs": [
+      {
+        "borrowerId": "B1",
+        "lenderId": "L1",
+        "loanAmount": 100000,
+        "compatibilityScore": 0.97,
+        "timestamp": "2025-11-20T13:26:57.843Z"
+      }
+    ],
+    "unmatchedBorrowers": [],
+    "totalMatchedAmount": 100000,
+    "averageCompatibility": 0.97,
+    "scenario": "More Lenders Than Borrowers"
+  },
+  {
+    "matchedPairs": [
+      {
+        "borrowerId": "B1",
+        "lenderId": "L1",
+        "loanAmount": 50000,
+        "compatibilityScore": 0.97,
+        "timestamp": "2025-11-20T13:26:57.849Z"
+      }
+    ],
+    "unmatchedBorrowers": [],
+    "totalMatchedAmount": 50000,
+    "averageCompatibility": 0.97,
+    "scenario": "Unmatched Borrowers"
+  },
+  {
+    "matchedPairs": [
+      {
+        "borrowerId": "B1",
+        "lenderId": "L2",
+        "loanAmount": 50000,
+        "compatibilityScore": 0.8800000000000001,
+        "timestamp": "2025-11-20T13:26:57.856Z"
+      }
+    ],
+    "unmatchedBorrowers": [],
+    "totalMatchedAmount": 50000,
+    "averageCompatibility": 0.8800000000000001,
+    "scenario": "Zero Capacity Lenders"
+  },
+  {
+    "matchedPairs": [
+      {
+        "borrowerId": "B1",
+        "lenderId": "L1",
+        "loanAmount": 50000,
+        "compatibilityScore": 0.64,
+        "timestamp": "2025-11-20T13:26:57.863Z"
+      },
+      {
+        "borrowerId": "B2",
+        "lenderId": "L2",
+        "loanAmount": 50000,
+        "compatibilityScore": 0.82,
+        "timestamp": "2025-11-20T13:26:57.864Z"
+      }
+    ],
+    "unmatchedBorrowers": [],
+    "totalMatchedAmount": 100000,
+    "averageCompatibility": 0.73,
+    "scenario": "High Risk Conflict"
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "batch": "batch2_different_people",
+    "description": "Single images of different individuals for inter-person discrimination testing",
+    "images": [
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.31 (1).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.31 (2).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.31.jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.32 (1).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.32 (2).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.32 (3).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.32.jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.33 (1).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.33 (2).jpeg",
+      "backend/Test_Images/DifferentFace/WhatsApp Image 2025-11-17 at 19.26.33.jpeg"
+    ],
+    "expectedPurpose": "Test that different individuals are recognized as different people"
+  }
+]

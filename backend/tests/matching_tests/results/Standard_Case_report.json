@@ -1,0 +1,22 @@
+{
+  "matchedPairs": [
+    {
+      "borrowerId": "B1",
+      "lenderId": "L1",
+      "loanAmount": 50000,
+      "compatibilityScore": 0.97,
+      "timestamp": "2025-11-20T13:26:57.832Z"
+    },
+    {
+      "borrowerId": "B2",
+      "lenderId": "L2",
+      "loanAmount": 75000,
+      "compatibilityScore": 0.97,
+      "timestamp": "2025-11-20T13:26:57.832Z"
+    }
+  ],
+  "unmatchedBorrowers": [],
+  "totalMatchedAmount": 125000,
+  "averageCompatibility": 0.97,
+  "scenario": "Standard Case"
+}

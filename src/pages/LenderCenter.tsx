@@ -1,29 +1,52 @@
+import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, CreditCard, Wallet } from "lucide-react";
-import { loanApi } from "@/lib/api";
+import { DollarSign, CreditCard, Wallet, Loader2 } from "lucide-react";
+import { enhancedLoanApi } from "@/lib/api";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LenderCenter = () => {
-  const opportunities = [
-    {
-      id: "REQ-201",
-      borrower: "Amit Patel",
-      amount: 20000,
-      rate: 9.0,
-      duration: 12,
-    },
-    {
-      id: "REQ-225",
-      borrower: "Sunita Reddy",
-      amount: 15000,
-      rate: 8.5,
-      duration: 10,
-    },
-  ];
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fundingLoading, setFundingLoading] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    fetchOpportunities();
+  }, []);
+
+  const fetchOpportunities = async () => {
+    try {
+      const response = await enhancedLoanApi.getAll({ status: 'PENDING' });
+      if (response.success) {
+        // Filter loans where current user is a lender
+        const userLoans = (response.data as any[]).filter((loan: any) =>
+          loan.lenders?.some((l: any) => l.lenderId === user?.id && l.status === 'Pending')
+        );
+        setOpportunities(userLoans);
+      }
+    } catch (error) {
+      toast.error('Failed to load opportunities');
+    }
+    setLoading(false);
+  };
 
   const handleFund = async (loanId: string) => {
-    await loanApi.fund(loanId);
+    setFundingLoading(loanId);
+    try {
+      const response = await enhancedLoanApi.confirmFunding(loanId);
+      if (response.success) {
+        toast.success('Loan funded successfully!');
+        fetchOpportunities(); // Refresh the list
+      } else {
+        toast.error(response.error || 'Failed to fund loan');
+      }
+    } catch (error) {
+      toast.error('Network error occurred');
+    }
+    setFundingLoading(null);
   };
 
   return (

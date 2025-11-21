@@ -55,15 +55,22 @@ const Signup = () => {
     setLoading(true);
 
     try {
+      // Add country code to phone number for backend
+      const registrationData = {
+        ...formData,
+        phone: `+91${formData.phone}`,
+      };
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(registrationData),
       });
 
       const data = await response.json();
       if (data.success) {
         localStorage.setItem('userEmail', formData.email);  // Store email
+        localStorage.setItem('userId', data.data.userId);  // Store userId
         toast.success('Personal details submitted! Proceed to face verification.');
         navigate('/face-verification');
       } else {
@@ -166,8 +173,18 @@ const Signup = () => {
                 className="w-full p-3 glass-panel border-glass-border focus:border-gold rounded-lg"
                 required
               >
-                <option value="Borrower">Borrower</option>
-                <option value="Lender">Lender</option>
+                <option
+                  value="Borrower"
+                  className="bg-blue-50 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                >
+                  Borrower
+                </option>
+                <option
+                  value="Lender"
+                  className="bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300"
+                >
+                  Lender
+                </option>
               </select>
             </div>
 

@@ -364,6 +364,7 @@ class PaymentController {
 
       // Create transaction record
       const transaction = new Transaction({
+        transactionId: uuidv4(), // Explicitly generate transaction ID
         loanId,
         borrowerId: loanData.borrowerId,
         lenderId: loanData.lenderId,
@@ -402,6 +403,8 @@ class PaymentController {
           emiNumber,
           repaymentType,
           paymentUrl: `${process.env.FRONTEND_URL}/payment/${razorpayOrder.id}`,
+          // Include test credentials for frontend integration
+          testCredentials: razorpayService.getTestCredentials(),
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours for repayment
         }
       });
@@ -612,6 +615,7 @@ class PaymentController {
     if (mockSuccess) {
       // Create mock successful transaction
       const transaction = new Transaction({
+        transactionId: uuidv4(), // Explicitly generate transaction ID
         ...repaymentData,
         type: repaymentData.repaymentType,
         status: 'confirmed',

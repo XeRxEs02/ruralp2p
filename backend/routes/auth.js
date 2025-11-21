@@ -21,9 +21,23 @@ const {
   getAccessToken
 } = require('../utils/digilocker');
 const User = require('../models/User');
+const blockchainService = require('../services/blockchainService');
 const router = express.Router();
 
 let otpStore = {};  // Temporary OTP storage (in-memory for now)
+
+// OTP expiration time (5 minutes)
+const OTP_EXPIRY_TIME = 5 * 60 * 1000;
+
+// Function to clean expired OTPs
+function cleanExpiredOTPs() {
+  const now = Date.now();
+  for (const [email, otpData] of Object.entries(otpStore)) {
+    if (otpData.expiry && now > otpData.expiry) {
+      delete otpStore[email];
+    }
+  }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
@@ -131,9 +145,10 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid email format' });
     }
 
-    // Validate phone format (basic validation)
+    // Validate phone format (basic validation) - handle international format
+    const cleanPhone = phone.replace(/^\+91/, ''); // Remove +91 prefix if present
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phone)) {
+    if (!phoneRegex.test(cleanPhone)) {
       return res.status(400).json({ success: false, error: 'Phone number must be 10 digits' });
     }
 
@@ -149,13 +164,14 @@ router.post('/register', async (req, res) => {
     }
 
     // Create user with personal details only
+    const cleanAadharNumber = aadharNumber ? aadharNumber.replace(/\s/g, '') : '';
     const newUser = new User({
       fullName,
       email,
       password: 'dummy-password',
       phone,
       role,
-      aadharNumber: aadharNumber.replace(/\s/g, ''), // Remove spaces from Aadhar
+      aadharNumber: cleanAadharNumber, // Remove spaces from Aadhar
       kycVerified: false,
       faceVerified: false,
     });
@@ -165,6 +181,9 @@ router.post('/register', async (req, res) => {
     res.json({
       success: true,
       message: 'Personal details saved. Proceed to face verification.',
+      data: {
+        userId: newUser._id,
+      },
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -176,13 +195,38 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/send-otp', async (req, res) => {
-  const { phone } = req.body;
+  const { phone, email } = req.body;
   if (!phone) {
     return res.status(400).json({ success: false, error: 'Phone number required' });
   }
 
-  const result = await sendOTP(phone);
-  res.json(result);
+  try {
+    // Clean expired OTPs first
+    cleanExpiredOTPs();
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = Date.now() + OTP_EXPIRY_TIME;
+
+    // Store OTP with expiry
+    otpStore[email || 'default'] = {
+      otp,
+      expiry,
+      phone
+    };
+
+    // Send OTP
+    const result = await sendOTP(phone, otp);
+
+    res.json({
+      success: true,
+      message: 'OTP sent successfully',
+      development: result.development || false
+    });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ success: false, error: 'Failed to send OTP' });
+  }
 });
 
 router.post('/verify-otp', async (req, res) => {
@@ -193,15 +237,20 @@ router.post('/verify-otp', async (req, res) => {
   }
 
   try {
-    // Get user email from localStorage (passed from frontend)
+    // Get user email from headers or use a default for testing
     const email = req.headers['x-user-email'] || 'user@example.com';
 
-    // Check if OTP matches (in a real app, you'd store OTPs in database)
-    // For now, we'll accept any 6-digit OTP for testing
-    if (otp.length === 6 && /^\d+$/.test(otp)) {
+    // Clean expired OTPs first
+    cleanExpiredOTPs();
+
+    // Check if OTP exists, matches, and hasn't expired
+    const otpData = otpStore[email];
+    if (otpData && otpData.otp === otp) {
+      // Clear the OTP after successful verification
+      delete otpStore[email];
       res.json({ success: true, message: 'OTP verified successfully' });
     } else {
-      res.status(400).json({ success: false, error: 'Invalid OTP format' });
+      res.status(400).json({ success: false, error: 'Invalid or expired OTP' });
     }
   } catch (error) {
     console.error('OTP verification error:', error);
@@ -247,31 +296,42 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Unique ID and password required' });
   }
 
-  const user = await User.findOne({ uniqueId });
-  if (!user || user.password !== password) {
-    return res.status(401).json({ success: false, error: 'Invalid credentials' });
-  }
+  try {
+    const user = await User.findOne({ uniqueId });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
 
-  const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    // Compare password using model's method
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
 
-  res.json({
-    success: true,
-    data: {
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        fullName: user.fullName,
-        phone: user.phone,
-        role: user.role,
-        walletAddress: user.walletAddress,
-        kycVerified: user.kycVerified,
-        faceVerified: user.faceVerified,
-        aadharDocument: user.aadharDocument,
-        faceImage: user.faceImage
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          fullName: user.fullName,
+          phone: user.phone,
+          role: user.role,
+          walletAddress: user.walletAddress,
+          kycVerified: user.kycVerified,
+          faceVerified: user.faceVerified,
+          aadharDocument: user.aadharDocument,
+          faceImage: user.faceImage
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, error: 'Login failed. Please try again.' });
+  }
 });
 
 // NEW: Login with REAL face verification
@@ -290,7 +350,13 @@ router.post('/login-with-face', upload.single('faceImage'), async (req, res) => 
   try {
     // Step 1: Verify credentials
     const user = await User.findOne({ uniqueId });
-    if (!user || user.password !== password) {
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
+
+    // Compare password using model's method
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
@@ -425,31 +491,65 @@ router.post('/verify-face', upload.fields([{ name: 'faceImage' }, { name: 'aadha
 
     let digilockerResult;
     try {
-      // Validate Aadhaar number format
-      if (!validateAadhaarNumber(user.aadharNumber)) {
-        console.warn('⚠️  Invalid Aadhaar number format');
+      // Check if DigiLocker is configured
+      const isDigiLockerConfigured = process.env.DIGILOCKER_CLIENT_ID &&
+        process.env.DIGILOCKER_CLIENT_SECRET &&
+        process.env.DIGILOCKER_CLIENT_ID !== 'YOUR_CLIENT_ID' &&
+        process.env.DIGILOCKER_CLIENT_SECRET !== 'YOUR_CLIENT_SECRET';
+
+      if (isDigiLockerConfigured) {
+        // Validate Aadhaar number format
+        if (!validateAadhaarNumber(user.aadharNumber)) {
+          console.warn('⚠️  Invalid Aadhaar number format');
+        }
+
+        // Verify Aadhaar from DigiLocker
+        digilockerResult = await verifyAadhaarDocument(
+          user.aadharNumber,
+          user.fullName,
+          req.body.digilockerToken, // Optional: from OAuth flow
+          req.body.docUri // Optional: specific document URI
+        );
+
+        if (!digilockerResult.verified) {
+          return res.status(400).json({
+            success: false,
+            error: 'DigiLocker verification failed: ' + (digilockerResult.error || 'Invalid document'),
+            stage: 'digilocker'
+          });
+        }
+
+        console.log('✅ DigiLocker verification successful');
+        console.log('   Aadhaar Number:', digilockerResult.aadhaarNumber);
+        console.log('   Name:', digilockerResult.name);
+        console.log('   Simulated Mode:', digilockerResult.simulatedMode || false);
+      } else {
+        // Fall back to simulation mode for development
+        console.log('⚠️  DigiLocker not configured, using simulation mode');
+
+        // Validate Aadhaar number format
+        if (!validateAadhaarNumber(user.aadharNumber)) {
+          console.warn('⚠️  Invalid Aadhaar number format');
+        }
+
+        // Use simulation for development
+        digilockerResult = {
+          verified: true,
+          aadhaarNumber: user.aadharNumber,
+          name: user.fullName,
+          dob: '1990-01-01',
+          gender: 'Male',
+          address: 'Sample Address, India',
+          issuedDate: new Date().toISOString(),
+          digilockerVerified: true,
+          simulatedMode: true,
+        };
+
+        console.log('✅ DigiLocker simulation successful');
+        console.log('   Aadhaar Number:', digilockerResult.aadhaarNumber);
+        console.log('   Name:', digilockerResult.name);
+        console.log('   Simulated Mode:', digilockerResult.simulatedMode);
       }
-
-      // Verify Aadhaar from DigiLocker
-      digilockerResult = await verifyAadhaarDocument(
-        user.aadharNumber,
-        user.fullName,
-        req.body.digilockerToken, // Optional: from OAuth flow
-        req.body.docUri // Optional: specific document URI
-      );
-
-      if (!digilockerResult.verified) {
-        return res.status(400).json({
-          success: false,
-          error: 'DigiLocker verification failed: ' + (digilockerResult.error || 'Invalid document'),
-          stage: 'digilocker'
-        });
-      }
-
-      console.log('✅ DigiLocker verification successful');
-      console.log('   Aadhaar Number:', digilockerResult.aadhaarNumber);
-      console.log('   Name:', digilockerResult.name);
-      console.log('   Simulated Mode:', digilockerResult.simulatedMode || false);
 
     } catch (digilockerError) {
       console.error('❌ DigiLocker verification error:', digilockerError.message);
@@ -530,11 +630,30 @@ router.post('/verify-face', upload.fields([{ name: 'faceImage' }, { name: 'aadha
 
     console.log('✅ User data updated with REAL embeddings, hash, and DigiLocker verification');
 
+    // STEP 4.5: Blockchain Document Verification
+    console.log('🔗 Step 4.5: Verifying document on blockchain...');
+    let blockchainResult;
+    try {
+      blockchainResult = await blockchainService.verifyDocumentHash(result.documentHash);
+      console.log('✅ Document verified on blockchain:', blockchainResult.txHash);
+    } catch (blockchainError) {
+      console.error('❌ Blockchain verification failed:', blockchainError.message);
+      // Don't fail the entire process, but log it
+      blockchainResult = { success: false, error: blockchainError.message };
+    }
+
     // STEP 5: Send OTP
     console.log('📱 Step 5: Sending OTP...');
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore[email] = otp;
+    const expiry = Date.now() + OTP_EXPIRY_TIME;
+
+    // Store OTP with expiry
+    otpStore[email] = {
+      otp,
+      expiry,
+      phone: user.phone
+    };
     await sendOTP(user.phone, otp);
 
     console.log('✅ OTP sent to:', user.phone);
@@ -556,6 +675,12 @@ router.post('/verify-face', upload.fields([{ name: 'faceImage' }, { name: 'aadha
           documentHashStored: true,
           liveness: result.liveness,
           message: 'No face comparison performed (stored for future loan verification)'
+        },
+        blockchain: {
+          verified: blockchainResult.success,
+          txHash: blockchainResult.txHash,
+          contractAddress: blockchainResult.contractAddress,
+          network: blockchainResult.network
         }
       }
     });
@@ -570,6 +695,50 @@ router.post('/verify-face', upload.fields([{ name: 'faceImage' }, { name: 'aadha
 
 router.post('/logout', (req, res) => {
   res.json({ success: true });
+});
+
+// Test SMS functionality
+router.post('/test-sms', async (req, res) => {
+  const { phone, message } = req.body;
+
+  if (!phone) {
+    return res.status(400).json({ success: false, error: 'Phone number required' });
+  }
+
+  try {
+    const result = await sendSMS(phone, message || 'Test SMS from Rural Gold Connect');
+    res.json({
+      success: true,
+      message: 'SMS test completed',
+      development: result.development || false,
+      phone: phone
+    });
+  } catch (error) {
+    console.error('SMS test error:', error);
+    res.status(500).json({ success: false, error: 'SMS test failed' });
+  }
+});
+
+// Check OTP status (for debugging)
+router.get('/otp-status', (req, res) => {
+  const email = req.query.email || 'default';
+  const otpData = otpStore[email];
+
+  if (otpData) {
+    const remainingTime = Math.max(0, Math.floor((otpData.expiry - Date.now()) / 1000));
+    res.json({
+      success: true,
+      hasOtp: true,
+      remainingTime: remainingTime,
+      phone: otpData.phone
+    });
+  } else {
+    res.json({
+      success: true,
+      hasOtp: false,
+      message: 'No active OTP found'
+    });
+  }
 });
 
 // DigiLocker OAuth routes

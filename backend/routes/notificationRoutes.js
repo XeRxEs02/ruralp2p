@@ -299,10 +299,32 @@ router.get('/status/:notificationId', NotificationController.getNotificationStat
  *     responses:
  *       200:
  *         description: User notifications retrieved successfully
+ *       403:
+ *         description: Access denied
  *       500:
  *         description: Internal server error
  */
-router.get('/user/:userId', NotificationController.getUserNotifications);
+router.get('/user/:userId', require('../middleware/auth').authenticateToken, async (req, res) => {
+  try {
+    // Users can only access their own notifications
+    if (req.params.userId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Can only access your own notifications'
+      });
+    }
+
+    // Call the controller method
+    return NotificationController.getUserNotifications(req, res);
+  } catch (error) {
+    console.error('Error getting user notifications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get notifications',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+});
 
 /**
  * @swagger

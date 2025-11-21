@@ -16,6 +16,13 @@ class BlockchainService {
         currency: 'MATIC',
         blockExplorer: 'https://mumbai.polygonscan.com'
       },
+      polygon_amoy: {
+        rpcUrl: process.env.BLOCKCHAIN_RPC_URL || 'https://rpc-amoy.polygon.technology/',
+        chainId: 80002,
+        name: 'Polygon Amoy Testnet',
+        currency: 'MATIC',
+        blockExplorer: 'https://amoy.polygonscan.com'
+      },
       polygon_mainnet: {
         rpcUrl: process.env.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com/',
         chainId: 137,
@@ -32,9 +39,29 @@ class BlockchainService {
       }
     };
 
-    this.currentNetwork = process.env.BLOCKCHAIN_NETWORK || 'polygon_mumbai';
-    this.mockMode = process.env.BLOCKCHAIN_MOCK_MODE === 'true';
-    
+    this.currentNetwork = process.env.BLOCKCHAIN_NETWORK || 'polygon_amoy';
+
+    // Determine mock mode based on environment variable
+    const mockModeValue = process.env.BLOCKCHAIN_MOCK_MODE;
+    this.mockMode = mockModeValue === 'true' || mockModeValue === true;
+
+    console.log(`Blockchain mock mode: ${this.mockMode}`);
+    console.log(`Environment variable BLOCKCHAIN_MOCK_MODE: "${mockModeValue}"`);
+
+    // Override based on specific conditions
+    if (mockModeValue === 'false' || mockModeValue === false) {
+      this.mockMode = false;
+      console.log('Forcing real blockchain mode');
+    } else if (this.mockMode) {
+      console.log('Using mock blockchain mode');
+    } else {
+      console.log('Using real blockchain mode');
+    }
+
+    // Set default account from environment
+    this.defaultAccount = process.env.WALLET_ADDRESS || '0xaAaFefF1051735671562A735013560E62ede782f';
+    console.log(`Using default account: ${this.defaultAccount}`);
+
     if (!this.mockMode) {
       this.initializeWeb3();
     } else {
@@ -42,17 +69,75 @@ class BlockchainService {
       console.log('BlockchainService initialized in MOCK mode');
     }
 
-    // Smart contract ABIs (simplified for demo)
+    // Always initialize mockTransactions
+    if (!this.mockTransactions) {
+      this.mockTransactions = new Map();
+    }
+
+    // Smart contract ABI for RuralConnectLoan (matches deployed contract)
     this.contractABIs = {
       loanContract: [
         {
+          "inputs": [],
+          "stateMutability": "nonpayable",
+          "type": "constructor"
+        },
+        {
           "inputs": [
-            {"type": "uint256", "name": "loanId"},
-            {"type": "address", "name": "borrower"},
-            {"type": "address", "name": "lender"},
-            {"type": "uint256", "name": "amount"},
-            {"type": "uint256", "name": "interestRate"},
-            {"type": "uint256", "name": "duration"}
+            {
+              "internalType": "string",
+              "name": "_documentHash",
+              "type": "string"
+            }
+          ],
+          "name": "checkDocument",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_borrower",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "_lender",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_dueDate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "_docHash",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "_purpose",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_interestRate",
+              "type": "uint256"
+            }
           ],
           "name": "createLoan",
           "outputs": [],
@@ -61,63 +146,149 @@ class BlockchainService {
         },
         {
           "inputs": [
-            {"type": "uint256", "name": "loanId"},
-            {"type": "uint256", "name": "amount"}
+            {
+              "internalType": "uint256",
+              "name": "_loanId",
+              "type": "uint256"
+            }
           ],
-          "name": "makeRepayment",
-          "outputs": [],
-          "stateMutability": "payable",
+          "name": "getLoan",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "loanId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "borrower",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "lender",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "amount",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "dueDate",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "repaid",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "string",
+                  "name": "documentHash",
+                  "type": "string"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "createdAt",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "repaidAt",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "string",
+                  "name": "purpose",
+                  "type": "string"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "interestRate",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct RuralConnectLoan.Loan",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
           "type": "function"
         },
         {
-          "inputs": [{"type": "uint256", "name": "loanId"}],
+          "inputs": [],
+          "name": "loanCounter",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_loanId",
+              "type": "uint256"
+            }
+          ],
           "name": "approveLoan",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
         },
         {
-          "inputs": [{"type": "uint256", "name": "loanId"}],
-          "name": "getLoanDetails",
-          "outputs": [
-            {"type": "address", "name": "borrower"},
-            {"type": "address", "name": "lender"},
-            {"type": "uint256", "name": "amount"},
-            {"type": "uint256", "name": "repaidAmount"},
-            {"type": "uint256", "name": "interestRate"},
-            {"type": "bool", "name": "isActive"},
-            {"type": "bool", "name": "isApproved"}
-          ],
-          "stateMutability": "view",
-          "type": "function"
-        }
-      ],
-      documentContract: [
-        {
           "inputs": [
-            {"type": "string", "name": "documentHash"},
-            {"type": "address", "name": "owner"},
-            {"type": "string", "name": "documentType"}
+            {
+              "internalType": "uint256",
+              "name": "_loanId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_repaymentAmount",
+              "type": "uint256"
+            }
           ],
-          "name": "storeDocument",
+          "name": "markRepaid",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
         },
         {
-          "inputs": [{"type": "string", "name": "documentHash"}],
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "_documentHash",
+              "type": "string"
+            }
+          ],
           "name": "verifyDocument",
-          "outputs": [{"type": "bool", "name": ""}],
-          "stateMutability": "view",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "nonpayable",
           "type": "function"
         }
       ]
     };
 
-    // Contract addresses (set via environment variables)
+    // Contract addresses
     this.contractAddresses = {
-      loanContract: process.env.LOAN_CONTRACT_ADDRESS,
-      documentContract: process.env.DOCUMENT_CONTRACT_ADDRESS
+      loanContract: process.env.CONTRACT_ADDRESS || '0xc8394dbfe7F050b3c5aBED9d23FeE76e2055227C'
     };
   }
 
@@ -129,12 +300,24 @@ class BlockchainService {
     try {
       const networkInfo = this.networkConfig[this.currentNetwork];
       this.web3 = new Web3(networkInfo.rpcUrl);
-      
+
       // Set up account from private key if provided
-      if (process.env.BLOCKCHAIN_PRIVATE_KEY) {
-        const account = this.web3.eth.accounts.privateKeyToAccount(process.env.BLOCKCHAIN_PRIVATE_KEY);
-        this.web3.eth.accounts.wallet.add(account);
-        this.defaultAccount = account.address;
+      if (process.env.PRIVATE_KEY) {
+        console.log(`Private key provided: ${process.env.PRIVATE_KEY.substring(0, 10)}...`);
+        try {
+          const account = this.web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
+          this.web3.eth.accounts.wallet.add(account);
+          this.defaultAccount = account.address;
+          console.log(`Using account: ${this.defaultAccount}`);
+        } catch (error) {
+          console.error('Error creating account from private key:', error);
+          this.defaultAccount = process.env.WALLET_ADDRESS;
+          console.log(`Using wallet address: ${this.defaultAccount}`);
+        }
+      } else {
+        // Use the wallet address from env if no private key
+        this.defaultAccount = process.env.WALLET_ADDRESS;
+        console.log(`Using wallet address: ${this.defaultAccount}`);
       }
 
       console.log(`BlockchainService connected to ${networkInfo.name}`);
@@ -152,7 +335,7 @@ class BlockchainService {
    */
   async createLoan(loanData) {
     try {
-      const { loanId, borrowerAddress, lenderAddress, amount, interestRate, duration } = loanData;
+      const { borrowerAddress, lenderAddress, amount, dueDate, docHash } = loanData;
 
       if (this.mockMode) {
         return this._createMockTransaction('createLoan', loanData);
@@ -168,14 +351,14 @@ class BlockchainService {
       );
 
       const gasEstimate = await contract.methods
-        .createLoan(loanId, borrowerAddress, lenderAddress, amount, interestRate, duration)
+        .createLoan(borrowerAddress, lenderAddress, amount, dueDate, docHash, 'Agricultural Loan', 1200)
         .estimateGas({ from: this.defaultAccount });
 
       const tx = await contract.methods
-        .createLoan(loanId, borrowerAddress, lenderAddress, amount, interestRate, duration)
+        .createLoan(borrowerAddress, lenderAddress, amount, dueDate, docHash, 'Agricultural Loan', 1200)
         .send({
           from: this.defaultAccount,
-          gas: Math.floor(gasEstimate * 1.2), // 20% buffer
+          gas: Math.floor(Number(gasEstimate) * 1.2), // 20% buffer
           gasPrice: await this.web3.eth.getGasPrice()
         });
 
@@ -186,13 +369,36 @@ class BlockchainService {
         gasUsed: tx.gasUsed,
         contractAddress: this.contractAddresses.loanContract,
         network: this.currentNetwork,
-        operation: 'createLoan',
-        loanId
+        operation: 'createLoan'
       };
 
     } catch (error) {
       console.error('Error creating loan on blockchain:', error);
       throw new Error(`Blockchain loan creation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get loan counter from blockchain
+   * @returns {Promise<number>} Loan counter
+   */
+  async getLoanCounter() {
+    try {
+      if (this.mockMode) {
+        return Math.floor(Math.random() * 1000);
+      }
+
+      const contract = new this.web3.eth.Contract(
+        this.contractABIs.loanContract, 
+        this.contractAddresses.loanContract
+      );
+
+      const counter = await contract.methods.loanCounter().call();
+      return parseInt(counter);
+
+    } catch (error) {
+      console.error('Error fetching loan counter from blockchain:', error);
+      return 0;
     }
   }
 
@@ -281,50 +487,7 @@ class BlockchainService {
     }
   }
 
-  /**
-   * Store document hash on blockchain
-   * @param {Object} documentData - Document details
-   * @returns {Promise<Object>} Transaction result
-   */
-  async storeDocumentHash(documentData) {
-    try {
-      const { documentHash, ownerAddress, documentType } = documentData;
 
-      if (this.mockMode) {
-        return this._createMockTransaction('storeDocument', documentData);
-      }
-
-      if (!this.contractAddresses.documentContract) {
-        throw new Error('Document contract address not configured');
-      }
-
-      const contract = new this.web3.eth.Contract(
-        this.contractABIs.documentContract, 
-        this.contractAddresses.documentContract
-      );
-
-      const tx = await contract.methods
-        .storeDocument(documentHash, ownerAddress, documentType)
-        .send({
-          from: this.defaultAccount,
-          gas: 100000
-        });
-
-      return {
-        success: true,
-        txHash: tx.transactionHash,
-        blockNumber: tx.blockNumber,
-        gasUsed: tx.gasUsed,
-        operation: 'storeDocument',
-        documentHash,
-        documentType
-      };
-
-    } catch (error) {
-      console.error('Error storing document on blockchain:', error);
-      throw new Error(`Blockchain document storage failed: ${error.message}`);
-    }
-  }
 
   /**
    * Get loan details from blockchain
@@ -342,17 +505,20 @@ class BlockchainService {
         this.contractAddresses.loanContract
       );
 
-      const result = await contract.methods.getLoanDetails(loanId).call();
+      const result = await contract.methods.getLoan(loanId).call();
 
       return {
-        borrower: result[0],
-        lender: result[1],
-        amount: this.web3.utils.fromWei(result[2], 'ether'),
-        repaidAmount: this.web3.utils.fromWei(result[3], 'ether'),
-        interestRate: parseInt(result[4]),
-        isActive: result[5],
-        isApproved: result[6],
-        loanId
+        loanId: result[0],
+        borrower: result[1],
+        lender: result[2],
+        amount: this.web3.utils.fromWei(result[3], 'ether'),
+        dueDate: result[4],
+        repaid: result[5],
+        documentHash: result[6],
+        createdAt: result[7],
+        repaidAt: result[8],
+        purpose: result[9],
+        interestRate: result[10]
       };
 
     } catch (error) {
@@ -362,27 +528,119 @@ class BlockchainService {
   }
 
   /**
-   * Verify document hash on blockchain
+   * Mark loan as repaid on blockchain
+   * @param {string|number} loanId - Loan ID
+   * @param {number} amount - Repayment amount
+   * @returns {Promise<Object>} Transaction result
+   */
+  async markRepaid(loanId, amount = 0) {
+    try {
+      if (this.mockMode) {
+        return this._createMockTransaction('markRepaid', { loanId, amount });
+      }
+
+      const contract = new this.web3.eth.Contract(
+        this.contractABIs.loanContract,
+        this.contractAddresses.loanContract
+      );
+
+      const gasEstimate = await contract.methods
+        .markRepaid(loanId, amount)
+        .estimateGas({ from: this.defaultAccount });
+
+      const tx = await contract.methods
+        .markRepaid(loanId, amount)
+        .send({
+          from: this.defaultAccount,
+          gas: Math.floor(Number(gasEstimate) * 1.2), // 20% buffer
+          gasPrice: await this.web3.eth.getGasPrice()
+        });
+
+      return {
+        success: true,
+        txHash: tx.transactionHash,
+        blockNumber: tx.blockNumber,
+        gasUsed: tx.gasUsed,
+        contractAddress: this.contractAddresses.loanContract,
+        network: this.currentNetwork,
+        operation: 'markRepaid',
+        loanId,
+        amount
+      };
+
+    } catch (error) {
+      console.error('Error marking loan as repaid on blockchain:', error);
+      throw new Error(`Blockchain mark repaid failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify document hash on blockchain (check if verified)
    * @param {string} documentHash - Document hash to verify
    * @returns {Promise<boolean>} Verification result
    */
-  async verifyDocumentHash(documentHash) {
+  async checkDocumentHash(documentHash) {
     try {
       if (this.mockMode) {
         return Math.random() > 0.1; // 90% success rate in mock mode
       }
 
       const contract = new this.web3.eth.Contract(
-        this.contractABIs.documentContract, 
-        this.contractAddresses.documentContract
+        this.contractABIs.loanContract, 
+        this.contractAddresses.loanContract
       );
 
-      const isVerified = await contract.methods.verifyDocument(documentHash).call();
+      const isVerified = await contract.methods.checkDocument(documentHash).call();
       return isVerified;
 
     } catch (error) {
-      console.error('Error verifying document on blockchain:', error);
+      console.error('Error checking document on blockchain:', error);
       return false;
+    }
+  }
+
+  /**
+   * Verify and store document hash on blockchain
+   * @param {string} documentHash - Document hash to verify
+   * @returns {Promise<Object>} Transaction result
+   */
+  async verifyDocumentHash(documentHash) {
+    try {
+      if (this.mockMode) {
+        return this._createMockTransaction('verifyDocument', { documentHash });
+      }
+
+      const contract = new this.web3.eth.Contract(
+        this.contractABIs.loanContract, 
+        this.contractAddresses.loanContract
+      );
+
+      const gasEstimate = await contract.methods
+        .verifyDocument(documentHash)
+        .estimateGas({ from: this.defaultAccount });
+
+      const tx = await contract.methods
+        .verifyDocument(documentHash)
+        .send({
+          from: this.defaultAccount,
+          gas: Math.floor(Number(gasEstimate) * 1.2), // 20% buffer
+          gasPrice: await this.web3.eth.getGasPrice()
+        });
+
+      return {
+        success: true,
+        txHash: tx.transactionHash,
+        blockNumber: tx.blockNumber,
+        gasUsed: tx.gasUsed,
+        contractAddress: this.contractAddresses.loanContract,
+        network: this.currentNetwork,
+        operation: 'verifyDocument',
+        documentHash
+      };
+
+    } catch (error) {
+      console.error('Error verifying document on blockchain:', error);
+      throw new Error(`Blockchain document verification failed: ${error.message}`);
     }
   }
 

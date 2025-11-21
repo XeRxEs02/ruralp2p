@@ -1,0 +1,15 @@
+{
+  "matchedPairs": [
+    {
+      "borrowerId": "B1",
+      "lenderId": "L2",
+      "loanAmount": 50000,
+      "compatibilityScore": 0.8800000000000001,
+      "timestamp": "2025-11-20T13:26:57.856Z"
+    }
+  ],
+  "unmatchedBorrowers": [],
+  "totalMatchedAmount": 50000,
+  "averageCompatibility": 0.8800000000000001,
+  "scenario": "Zero Capacity Lenders"
+}

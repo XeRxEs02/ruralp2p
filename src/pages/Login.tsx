@@ -8,8 +8,10 @@ import { useNavigate, Link } from "react-router-dom";
 import { LogIn, User, Lock, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const Login = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     uniqueId: "",
     password: "",
@@ -26,24 +28,25 @@ const Login = () => {
     e.preventDefault();
 
     if (!formData.uniqueId || !formData.password) {
-      toast.error("Please enter unique ID and password");
+      toast.error(t("validation.required"));
       return;
     }
 
     setLoading(true);
 
     try {
-      // Use the auth context login function instead of direct fetch
+      // Use the auth context login function
       const success = await login({
-        email: formData.uniqueId,
+        uniqueId: formData.uniqueId,
         password: formData.password,
       });
 
       if (success) {
+        toast.success("Login successful!");
         navigate("/dashboard");
       }
     } catch (error) {
-      toast.error("Login error");
+      toast.error(t("errors.network"));
     }
 
     setLoading(false);
@@ -79,9 +82,9 @@ const Login = () => {
             <div className="w-16 h-16 mx-auto rounded-full bg-gold-gradient flex items-center justify-center mb-4">
               <LogIn className="w-8 h-8 text-background" />
             </div>
-            <h1 className="text-3xl font-bold text-gold-gradient">Login</h1>
+            <h1 className="text-3xl font-bold text-gold-gradient">{t("auth.login")}</h1>
             <p className="text-muted-foreground">
-              Enter your unique ID and password
+              {t("auth.password")}
             </p>
           </div>
 

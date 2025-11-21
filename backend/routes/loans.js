@@ -4,6 +4,7 @@ const { authenticateToken } = require('../middleware/auth');
 const Loan = require('../models/Loan');
 const User = require('../models/User');
 const axios = require('axios');
+const blockchainService = require('../services/blockchainService');
 const { enhancedMatching, Borrower, Lender } = require('../utils/matching');
 const { LoanFSM } = require('../utils/loanFSM');
 
@@ -25,6 +26,10 @@ router.post('/create', authenticateToken, async (req, res) => {
     return res.status(403).json({ success: false, error: 'Only borrowers can create loans' });
   }
 
+  if (!user.kycVerified || !user.aadharHash) {
+    return res.status(400).json({ success: false, error: 'User must be KYC verified to create loans' });
+  }
+
   const newLoan = new Loan({
     borrowerId: userId,
     amount,
@@ -34,25 +39,89 @@ router.post('/create', authenticateToken, async (req, res) => {
   });
 
   await newLoan.save();
+
+  // Blockchain integration
+  let blockchainResult;
+  try {
+    const dueDate = Math.floor(Date.now() / 1000) + (duration * 30 * 24 * 60 * 60); // duration in months
+    const borrowerAddress = user.walletAddress || '0x0000000000000000000000000000000000000000';
+    const lenderAddress = '0x0000000000000000000000000000000000000000'; // To be updated when funded
+
+    blockchainResult = await blockchainService.createLoan({
+      borrowerAddress,
+      lenderAddress,
+      amount: blockchainService.web3.utils.toWei(amount.toString(), 'ether'),
+      dueDate,
+      docHash: user.aadharHash
+    });
+
+    console.log('✅ Loan created on blockchain:', blockchainResult.txHash);
+  } catch (blockchainError) {
+    console.error('❌ Blockchain loan creation failed:', blockchainError.message);
+    // Don't fail the entire process, but log it
+    blockchainResult = { success: false, error: blockchainError.message };
+  }
+
   res.json({
     success: true,
     data: newLoan,
+    blockchain: {
+      verified: blockchainResult.success,
+      txHash: blockchainResult.txHash,
+      contractAddress: blockchainResult.contractAddress,
+      network: blockchainResult.network
+    }
   });
 });
 
-// Get all loans
-router.get('/', async (req, res) => {
-  const { status, borrowerId } = req.query;
-  let query = {};
+// Get all loans (Role-based filtering)
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const { status, borrowerId } = req.query;
+    const user = await User.findById(req.user.id);
 
-  if (status) query.status = status;
-  if (borrowerId) query.borrowerId = borrowerId;
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'User not found' });
+    }
 
-  const loans = await Loan.find(query).populate('borrowerId', 'fullName email');
-  res.json({
-    success: true,
-    data: loans,
-  });
+    let query = {};
+
+    // Role-based data filtering
+    if (user.role === 'Borrower') {
+      // Borrowers can only see their own loans
+      query.borrowerId = user._id;
+    } else if (user.role === 'Lender') {
+      // Lenders can only see loans they're involved in (as lender or matched lender)
+      query.$or = [
+        { lenderId: user._id }, // Single lender loans
+        { 'lenders.lenderId': user._id } // Multi-lender loans
+      ];
+    }
+    // Admin role could see all loans if implemented
+
+    // Additional filters
+    if (status) query.status = status;
+    if (borrowerId && user.role !== 'Borrower') {
+      // Only non-borrowers can filter by borrowerId
+      query.borrowerId = borrowerId;
+    }
+
+    const loans = await Loan.find(query)
+      .populate('borrowerId', 'fullName email phone')
+      .populate('lenders.lenderId', 'fullName email phone')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: loans,
+    });
+  } catch (error) {
+    console.error('Get loans error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get loans'
+    });
+  }
 });
 
 // Get loan by ID

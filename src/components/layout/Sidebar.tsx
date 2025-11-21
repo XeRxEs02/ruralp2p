@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   FolderOpen,
   Sparkles,
+  Bell,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const borrowerNavItems = [
   { icon: FileText, label: "All Loans", path: "/all-loans" },
   { icon: User, label: "Borrower Loans", path: "/borrower-loans" },
   { icon: CreditCard, label: "Repay Loan", path: "/repay-loan" },
+  { icon: Bell, label: "Notifications", path: "/notifications" },
 ];
 
 const lenderNavItems = [
@@ -29,6 +31,7 @@ const lenderNavItems = [
     path: "/validate-documents",
   },
   { icon: FolderOpen, label: "Documents", path: "/documents" },
+  { icon: Bell, label: "Notifications", path: "/notifications" },
 ];
 
 export const Sidebar = () => {

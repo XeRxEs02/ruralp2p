@@ -1,0 +1,19 @@
+[
+  {
+    "batch": "batch1_same_person",
+    "description": "Multiple images of the same person for intra-person similarity testing",
+    "images": [
+      "backend/Test_Images/Same face/PXL_20240406_171509771.jpg",
+      "backend/Test_Images/Same face/PXL_20240622_101738865.MP.jpg",
+      "backend/Test_Images/Same face/PXL_20241027_060915270.jpg",
+      "backend/Test_Images/Same face/PXL_20241101_140054935.jpg",
+      "backend/Test_Images/Same face/PXL_20250110_175532780.jpg",
+      "backend/Test_Images/Same face/PXL_20250115_055732037~3.jpg",
+      "backend/Test_Images/Same face/PXL_20250126_022337772.jpg",
+      "backend/Test_Images/Same face/PXL_20250218_162631934.MP.jpg",
+      "backend/Test_Images/Same face/PXL_20250620_042700566.MP.jpg",
+      "backend/Test_Images/Same face/WhatsApp Image 2025-11-18 at 11.56.30.jpeg"
+    ],
+    "expectedPurpose": "Test similarity between different photos of the same individual"
+  }
+]

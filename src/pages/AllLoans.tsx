@@ -7,8 +7,20 @@ import { loanApi } from '@/lib/api';
 import { Search, Filter, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface Loan {
+  _id: string;
+  borrowerId: {
+    fullName: string;
+  };
+  totalAmount: number;
+  duration: number;
+  averageInterestRate: number;
+  status: string;
+  createdAt: string;
+}
+
 const AllLoans = () => {
-  const [loans, setLoans] = useState<any[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
@@ -19,23 +31,30 @@ const AllLoans = () => {
 
   const fetchLoans = async () => {
     setLoading(true);
-    const response = await loanApi.getAll(filter !== 'all' ? { status: filter } : undefined);
-    if (response.success && response.data) {
-      // Mock data for demonstration
-      setLoans([
-        { id: '1', borrower: 'Rajesh Kumar', amount: 25000, duration: 12, interestRate: 8.5, status: 'Active', createdAt: '2024-01-15' },
-        { id: '2', borrower: 'Priya Sharma', amount: 15000, duration: 6, interestRate: 7.5, status: 'Pending', createdAt: '2024-02-10' },
-        { id: '3', borrower: 'Amit Patel', amount: 30000, duration: 18, interestRate: 9.0, status: 'Completed', createdAt: '2023-12-05' },
-        { id: '4', borrower: 'Sunita Reddy', amount: 20000, duration: 12, interestRate: 8.0, status: 'Active', createdAt: '2024-01-20' },
-        { id: '5', borrower: 'Vikram Singh', amount: 35000, duration: 24, interestRate: 9.5, status: 'Active', createdAt: '2024-02-01' },
-      ]);
+    try {
+      const response = await loanApi.getAll(filter !== 'all' ? { status: filter } : undefined);
+      console.log('Loans API response:', response); // Debug log
+      if (response.success && response.data) {
+        // Handle different response formats
+        const responseData = response.data as any;
+        const loansData = Array.isArray(responseData) ? responseData :
+                         (responseData && Array.isArray(responseData.data)) ? responseData.data :
+                         (responseData && Array.isArray(responseData.loans)) ? responseData.loans : [];
+        setLoans(loansData as Loan[]);
+      } else {
+        console.error('Failed to fetch loans:', response.error || 'Invalid response format', response);
+        setLoans([]);
+      }
+    } catch (error) {
+      console.error('Error fetching loans:', error);
+      setLoans([]);
     }
     setLoading(false);
   };
 
   const filteredLoans = loans.filter(loan =>
-    loan.borrower.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    loan.id.toLowerCase().includes(searchTerm.toLowerCase())
+    loan.borrowerId.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    loan._id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
@@ -94,7 +113,7 @@ const AllLoans = () => {
           ) : (
             filteredLoans.map((loan, index) => (
               <motion.div
-                key={loan.id}
+                key={loan._id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
@@ -103,17 +122,17 @@ const AllLoans = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-lg">{loan.borrower}</h3>
+                      <h3 className="font-semibold text-lg">{loan.borrowerId.fullName}</h3>
                       <Badge className={getStatusColor(loan.status)}>{loan.status}</Badge>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Loan ID</p>
-                        <p className="font-medium font-mono">{loan.id}</p>
+                        <p className="font-medium font-mono">{loan._id}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Amount</p>
-                        <p className="font-semibold text-gold">₹{loan.amount.toLocaleString()}</p>
+                        <p className="font-semibold text-gold">₹{loan.totalAmount.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Duration</p>
@@ -121,7 +140,7 @@ const AllLoans = () => {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Interest Rate</p>
-                        <p className="font-medium">{loan.interestRate}%</p>
+                        <p className="font-medium">{loan.averageInterestRate}%</p>
                       </div>
                     </div>
                   </div>

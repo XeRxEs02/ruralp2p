@@ -34,7 +34,7 @@ class NotificationController {
         title,
         message,
         channels = { sms: true, push: true, inApp: true },
-        priority = 'medium',
+        priority = 'Medium',
         scheduledFor,
         templateVariables = {},
         metadata = {}
@@ -42,48 +42,24 @@ class NotificationController {
 
       // Create notification record
       const notificationData = {
-        userId,
-        userType,
+        recipientId: userId, // Use recipientId as per schema
         type,
         title,
         message,
-        priority,
-        scheduledFor: scheduledFor ? new Date(scheduledFor) : new Date(),
+        priority: priority.charAt(0).toUpperCase() + priority.slice(1), // Capitalize
+        read: false,
+        channels: {
+          email: Boolean(channels.email),
+          sms: Boolean(channels.sms),
+          push: Boolean(channels.push),
+          inApp: Boolean(channels.inApp)
+        },
         metadata: {
           ...metadata,
           source: 'api',
           createdBy: req.user?.id || 'system'
         }
       };
-
-      // Initialize channels object
-      notificationData.channels = {
-        sms: { enabled: false },
-        push: { enabled: false },
-        email: { enabled: false },
-        websocket: { enabled: false },
-        inApp: { enabled: true }
-      };
-
-      // Configure channels based on user preferences and request
-      if (channels.sms) {
-        notificationData.channels.sms.enabled = true;
-        notificationData.channels.sms.phoneNumber = req.body.phoneNumber || await NotificationController._getUserPhone(userId);
-      }
-
-      if (channels.push) {
-        notificationData.channels.push.enabled = true;
-        notificationData.channels.push.fcmToken = req.body.fcmToken || await NotificationController._getUserFCMToken(userId);
-      }
-
-      if (channels.email) {
-        notificationData.channels.email.enabled = true;
-        notificationData.channels.email.emailAddress = req.body.email || await NotificationController._getUserEmail(userId);
-      }
-
-      if (channels.websocket !== false) {
-        notificationData.channels.websocket.enabled = true;
-      }
 
       // Process template variables if using predefined templates
       if (type && !message) {
@@ -352,44 +328,51 @@ class NotificationController {
   static async getUserNotifications(req, res) {
     try {
       const { userId } = req.params;
-      const { 
-        page = 1, 
-        limit = 20, 
-        type, 
+      const {
+        page = 1,
+        limit = 20,
+        type,
         unreadOnly = false,
-        priority 
+        priority
       } = req.query;
 
-      const query = { userId };
-      
+      const query = { recipientId: userId };
+
       if (type) query.type = type;
       if (priority) query.priority = priority;
-      if (unreadOnly === 'true') query['channels.inApp.read'] = false;
+      if (unreadOnly === 'true') query.read = false;
 
-      const options = {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        sort: { createdAt: -1 }
-      };
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const skip = (pageNum - 1) * limitNum;
 
-      const notifications = await Notification.paginate(query, options);
+      const notifications = await Notification.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .populate('senderId', 'fullName')
+        .populate('relatedLoanId', 'loanId amount');
+
+      const totalNotifications = await Notification.countDocuments(query);
 
       // Get unread count
       const unreadCount = await Notification.countDocuments({
-        userId,
-        'channels.inApp.read': false
+        recipientId: userId,
+        read: false
       });
+
+      const totalPages = Math.ceil(totalNotifications / limitNum);
 
       res.status(200).json({
         success: true,
         data: {
-          notifications: notifications.docs,
+          notifications,
           pagination: {
-            currentPage: notifications.page,
-            totalPages: notifications.totalPages,
-            totalNotifications: notifications.totalDocs,
-            hasNextPage: notifications.hasNextPage,
-            hasPrevPage: notifications.hasPrevPage
+            currentPage: pageNum,
+            totalPages,
+            totalNotifications,
+            hasNextPage: pageNum < totalPages,
+            hasPrevPage: pageNum > 1
           },
           unreadCount
         }
@@ -397,7 +380,7 @@ class NotificationController {
 
     } catch (error) {
       console.error('Error getting user notifications:', error);
-      
+
       res.status(500).json({
         success: false,
         message: 'Failed to get user notifications',
@@ -699,10 +682,48 @@ class NotificationController {
    */
   static async _processNotificationDelivery(notification) {
     try {
+      // Get user contact information
+      const contactInfo = await NotificationController._getUserContactInfo(notification.recipientId);
+
+      // Set up channel-specific data
+      if (notification.channels.sms && notification.channels.sms.enabled !== false) {
+        notification.channels.sms = {
+          ...notification.channels.sms,
+          phoneNumber: contactInfo.phone,
+          enabled: contactInfo.notificationPreferences.sms
+        };
+      }
+
+      if (notification.channels.push && notification.channels.push.enabled !== false) {
+        notification.channels.push = {
+          ...notification.channels.push,
+          fcmToken: contactInfo.firebaseToken,
+          enabled: contactInfo.notificationPreferences.push
+        };
+      }
+
+      if (notification.channels.email && notification.channels.email.enabled !== false) {
+        notification.channels.email = {
+          ...notification.channels.email,
+          emailAddress: contactInfo.email,
+          enabled: contactInfo.notificationPreferences.email
+        };
+      }
+
+      if (notification.channels.inApp && notification.channels.inApp.enabled !== false) {
+        notification.channels.inApp = {
+          ...notification.channels.inApp,
+          enabled: contactInfo.notificationPreferences.inApp
+        };
+      }
+
+      // Save updated notification with contact info
+      await notification.save();
+
       const deliveryPromises = [];
 
       // SMS delivery
-      if (notification.channels.sms.enabled && notification.channels.sms.phoneNumber) {
+      if (notification.channels.sms?.enabled && notification.channels.sms.phoneNumber) {
         deliveryPromises.push(
           NotificationController._deliverSMS(notification)
             .catch(error => console.error('SMS delivery failed:', error))
@@ -710,7 +731,7 @@ class NotificationController {
       }
 
       // Push notification delivery
-      if (notification.channels.push.enabled && notification.channels.push.fcmToken) {
+      if (notification.channels.push?.enabled && notification.channels.push.fcmToken) {
         deliveryPromises.push(
           NotificationController._deliverPushNotification(notification)
             .catch(error => console.error('Push notification delivery failed:', error))
@@ -718,18 +739,18 @@ class NotificationController {
       }
 
       // Email delivery (placeholder - would need email service)
-      if (notification.channels.email.enabled && notification.channels.email.emailAddress) {
+      if (notification.channels.email?.enabled && notification.channels.email.emailAddress) {
         deliveryPromises.push(
           NotificationController._deliverEmail(notification)
             .catch(error => console.error('Email delivery failed:', error))
         );
       }
 
-      // WebSocket delivery (real-time)
-      if (notification.channels.websocket.enabled) {
+      // In-app notification (always enabled for now)
+      if (notification.channels.inApp?.enabled) {
         deliveryPromises.push(
-          NotificationController._deliverWebSocket(notification)
-            .catch(error => console.error('WebSocket delivery failed:', error))
+          NotificationController._deliverInApp(notification)
+            .catch(error => console.error('In-app notification delivery failed:', error))
         );
       }
 
@@ -841,6 +862,25 @@ class NotificationController {
   }
 
   /**
+   * Deliver in-app notification
+   * @private
+   */
+  static async _deliverInApp(notification) {
+    try {
+      // In-app notifications are stored in the database and can be fetched by the frontend
+      // The notification is already created, so we just mark it as delivered for in-app
+      console.log(`In-app notification ready for user ${notification.recipientId}: ${notification.title}`);
+
+      await notification.markChannelAsSent('inApp');
+      await notification.markChannelAsDelivered('inApp');
+
+    } catch (error) {
+      await notification.markChannelAsFailed('inApp', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Deliver WebSocket notification
    * @private
    */
@@ -887,30 +927,75 @@ class NotificationController {
   }
 
   /**
-   * Get user phone number (placeholder)
+   * Get user contact information from database
+   * @private
+   */
+  static async _getUserContactInfo(userId) {
+    try {
+      const User = require('../models/User');
+      const user = await User.findById(userId);
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      return {
+        phone: user.phone,
+        email: user.email,
+        firebaseToken: user.firebaseToken,
+        notificationPreferences: user.notificationPreferences || {
+          sms: true,
+          push: true,
+          email: false,
+          inApp: true
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching user contact info:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user phone number
    * @private
    */
   static async _getUserPhone(userId) {
-    // In real implementation, fetch from user database
-    return '+919876543210'; // Mock phone number
+    try {
+      const contactInfo = await NotificationController._getUserContactInfo(userId);
+      return contactInfo.phone;
+    } catch (error) {
+      console.error('Error getting user phone:', error);
+      return null;
+    }
   }
 
   /**
-   * Get user FCM token (placeholder)
+   * Get user FCM token
    * @private
    */
   static async _getUserFCMToken(userId) {
-    // In real implementation, fetch from user preferences/devices
-    return firebaseService.generateTestToken();
+    try {
+      const contactInfo = await NotificationController._getUserContactInfo(userId);
+      return contactInfo.firebaseToken;
+    } catch (error) {
+      console.error('Error getting user FCM token:', error);
+      return null;
+    }
   }
 
   /**
-   * Get user email (placeholder)
+   * Get user email
    * @private
    */
   static async _getUserEmail(userId) {
-    // In real implementation, fetch from user database
-    return 'user@ruralconnect.com';
+    try {
+      const contactInfo = await NotificationController._getUserContactInfo(userId);
+      return contactInfo.email;
+    } catch (error) {
+      console.error('Error getting user email:', error);
+      return null;
+    }
   }
 
   /**

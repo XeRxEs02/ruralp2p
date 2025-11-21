@@ -1,0 +1,112 @@
+{
+  "aggregateMetrics": {
+    "overallMatchingRate": 66.66666666666666,
+    "overallSatisfaction": 95,
+    "overallStability": 100,
+    "overallSupplyUtilization": 113.33333333333334,
+    "overallCompatibility": 0.9039999999999999,
+    "totalScenarios": 5
+  },
+  "detailedMetrics": [
+    {
+      "totalMatches": 2,
+      "matchingRate": 100,
+      "avgBorrowerSatisfaction": 100,
+      "avgLenderSatisfaction": 100,
+      "stabilityScore": 100,
+      "blockingPairsFound": 0,
+      "supplyRatio": 100,
+      "avgCompatibility": 0.97,
+      "compatibilityDistribution": {
+        "excellent": 2,
+        "good": 0,
+        "moderate": 0,
+        "poor": 0
+      },
+      "unmatchedBorrowers": 0,
+      "totalBorrowers": 2,
+      "totalLenders": 2,
+      "scenario": "Standard Case"
+    },
+    {
+      "totalMatches": 1,
+      "matchingRate": 33.33333333333333,
+      "avgBorrowerSatisfaction": 100,
+      "avgLenderSatisfaction": 100,
+      "stabilityScore": 100,
+      "blockingPairsFound": 0,
+      "supplyRatio": 100,
+      "avgCompatibility": 0.97,
+      "compatibilityDistribution": {
+        "excellent": 1,
+        "good": 0,
+        "moderate": 0,
+        "poor": 0
+      },
+      "unmatchedBorrowers": 0,
+      "totalBorrowers": 1,
+      "totalLenders": 3,
+      "scenario": "More Lenders Than Borrowers"
+    },
+    {
+      "totalMatches": 1,
+      "matchingRate": 50,
+      "avgBorrowerSatisfaction": 100,
+      "avgLenderSatisfaction": 100,
+      "stabilityScore": 100,
+      "blockingPairsFound": 0,
+      "supplyRatio": 166.66666666666669,
+      "avgCompatibility": 0.97,
+      "compatibilityDistribution": {
+        "excellent": 1,
+        "good": 0,
+        "moderate": 0,
+        "poor": 0
+      },
+      "unmatchedBorrowers": 0,
+      "totalBorrowers": 2,
+      "totalLenders": 1,
+      "scenario": "Unmatched Borrowers"
+    },
+    {
+      "totalMatches": 1,
+      "matchingRate": 50,
+      "avgBorrowerSatisfaction": 50,
+      "avgLenderSatisfaction": 100,
+      "stabilityScore": 100,
+      "blockingPairsFound": 0,
+      "supplyRatio": 100,
+      "avgCompatibility": 0.8800000000000001,
+      "compatibilityDistribution": {
+        "excellent": 0,
+        "good": 1,
+        "moderate": 0,
+        "poor": 0
+      },
+      "unmatchedBorrowers": 0,
+      "totalBorrowers": 1,
+      "totalLenders": 2,
+      "scenario": "Zero Capacity Lenders"
+    },
+    {
+      "totalMatches": 2,
+      "matchingRate": 100,
+      "avgBorrowerSatisfaction": 100,
+      "avgLenderSatisfaction": 100,
+      "stabilityScore": 100,
+      "blockingPairsFound": 0,
+      "supplyRatio": 100,
+      "avgCompatibility": 0.73,
+      "compatibilityDistribution": {
+        "excellent": 0,
+        "good": 1,
+        "moderate": 1,
+        "poor": 0
+      },
+      "unmatchedBorrowers": 0,
+      "totalBorrowers": 2,
+      "totalLenders": 2,
+      "scenario": "High Risk Conflict"
+    }
+  ]
+}

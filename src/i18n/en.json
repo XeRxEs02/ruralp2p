@@ -1,0 +1,161 @@
+{
+  "app": {
+    "title": "RuralConnect P2P",
+    "tagline": "Safe, simple peer-to-peer lending for rural communities"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "borrower": "Borrower",
+    "lender": "Lender",
+    "loans": "Loans",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "help": "Help",
+    "logout": "Logout",
+    "language": "Language"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "continue": "Continue",
+    "or": "or",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "forgot_password": "Forgot Password?",
+    "face_verify": "Face Verification",
+    "face_verify_step": "Please look at the camera for identity verification.",
+    "face_verified": "Face verified successfully",
+    "face_failed": "Biometric verification failed. Please try again.",
+    "otp": "OTP",
+    "send_otp": "Send OTP",
+    "verify_otp": "Verify OTP"
+  },
+  "user": {
+    "full_name": "Full Name",
+    "phone": "Phone Number",
+    "email": "Email",
+    "aadhar": "Aadhaar Number",
+    "address": "Address",
+    "village": "Village",
+    "district": "District",
+    "state": "State",
+    "pincode": "PIN Code",
+    "role": "Select Role",
+    "borrower": "Borrower",
+    "lender": "Lender",
+    "preferred_language": "Preferred Language"
+  },
+  "form": {
+    "submit": "Submit",
+    "save": "Save",
+    "update": "Update",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "upload_pdf": "Upload PDF",
+    "capture_face": "Capture Face",
+    "select_file": "Select File",
+    "change_language": "Change Language"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalid_phone": "Please enter a valid phone number",
+    "invalid_email": "Please enter a valid email address",
+    "invalid_aadhar": "Please enter a valid Aadhaar number",
+    "password_min": "Password must be at least 6 characters",
+    "password_mismatch": "Passwords do not match",
+    "pdf_only": "Only PDF documents are allowed"
+  },
+  "loan": {
+    "apply": "Apply for Loan",
+    "request_amount": "Requested Amount (₹)",
+    "purpose": "Purpose",
+    "duration_months": "Duration (months)",
+    "interest_rate": "Expected Interest (%)",
+    "seasonal": "Seasonal Repayment",
+    "harvest_cycle": "Harvest Cycle",
+    "grace_period": "Grace Period (days)",
+    "submit_request": "Submit Loan Request",
+    "status": {
+      "pending": "Pending",
+      "matched": "Matched",
+      "active": "Active",
+      "repaid": "Repaid",
+      "defaulted": "Defaulted"
+    },
+    "split_funding": "Split Funding",
+    "lender_allocation": "Lender Allocation",
+    "repay_now": "Repay Now",
+    "repayment_due": "Repayment Due",
+    "repayment_schedule": "Repayment Schedule",
+    "collateral": "Collateral (if any)"
+  },
+  "lender": {
+    "available_amount": "Available Amount (₹)",
+    "min_amount": "Minimum Amount (₹)",
+    "max_amount": "Maximum Amount (₹)",
+    "preferred_rate": "Preferred Interest (%)",
+    "risk_preference": "Risk Preference",
+    "fund": "Fund",
+    "fund_portion": "Fund Portion",
+    "confirm_funding": "Confirm Funding",
+    "view_opportunities": "View Opportunities"
+  },
+  "matching": {
+    "title": "Matching Result",
+    "algo": "Gale–Shapley Matching",
+    "summary": "The system has matched this request with suitable lenders based on amount, rate, and risk.",
+    "split_hint": "If one lender cannot cover full amount, multiple lenders share the loan."
+  },
+  "blockchain": {
+    "on_chain": "On-Chain Actions",
+    "create_loan": "Create Loan",
+    "fund_loan": "Fund Loan",
+    "repay_loan": "Repay Loan",
+    "tx_hash": "Transaction Hash",
+    "view_explorer": "View on PolygonScan",
+    "network": "Network",
+    "status_wait": "Waiting for blockchain confirmation..."
+  },
+  "docs": {
+    "verification": "Document Verification",
+    "upload": "Upload Aadhaar / Income PDFs",
+    "hashing": "SHA-256 Hashing",
+    "hash_stored": "Document hash stored on blockchain",
+    "ocr": "Text extracted using OCR",
+    "verified": "Documents verified"
+  },
+  "bio": {
+    "why": "Biometric Protection",
+    "explain": "Your face data is converted to a numeric fingerprint (embedding) and matched securely."
+  },
+  "notify": {
+    "sms_sent": "SMS sent",
+    "push_sent": "Push notification sent",
+    "loan_approved": "Your loan request has been approved",
+    "loan_funded": "Your loan has been funded",
+    "loan_repaid": "Your repayment has been confirmed"
+  },
+  "help": {
+    "simple_steps": "Simple Steps",
+    "step_1": "Register with phone, Aadhaar PDF, and face capture.",
+    "step_2": "Apply for loan with amount and purpose.",
+    "step_3": "Lenders review and fund your request.",
+    "step_4": "Receive amount and repay as per schedule.",
+    "rural_notes": "If internet is slow, the app will retry. You can continue later from the dashboard."
+  },
+  "errors": {
+    "network": "Network error. Please try again.",
+    "unknown": "Something went wrong. Please retry.",
+    "blockchain": "Blockchain transaction failed. Please check your wallet and try again.",
+    "permission_camera": "Camera permission required for face verification."
+  },
+  "tooltips": {
+    "aadhar": "Enter Aadhaar number as on your ID document.",
+    "seasonal": "Choose this if your income depends on crop harvest seasons.",
+    "harvest_cycle": "Select harvest season month for flexible repayment.",
+    "grace_period": "Extra days allowed after harvest before repayment.",
+    "split_funding": "Multiple lenders may jointly fund your loan.",
+    "face_capture": "Ensure your face is well-lit and visible."
+  }
+}

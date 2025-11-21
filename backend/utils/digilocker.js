@@ -153,43 +153,57 @@ async function simulateDigiLockerVerification(aadhaarNumber, name) {
 }
 
 /**
- * Main function: Verify Aadhaar using DigiLocker or simulation
+ * Main function: Verify Aadhaar using DigiLocker (supports mock mode)
  */
 async function verifyAadhaarDocument(aadhaarNumber, name, accessToken = null, docUri = null) {
-    try {
-        // Check if DigiLocker is configured
-        const isConfigured = DIGILOCKER_CONFIG.clientId !== 'YOUR_CLIENT_ID' &&
-            DIGILOCKER_CONFIG.clientSecret !== 'YOUR_CLIENT_SECRET';
+  try {
+    // Check if mock mode is enabled
+    const mockMode = process.env.DIGILOCKER_MOCK_MODE === 'true';
 
-        if (!isConfigured || !accessToken) {
-            console.warn('⚠️  DigiLocker API not configured, using simulation mode');
-            return await simulateDigiLockerVerification(aadhaarNumber, name);
-        }
-
-        // Real DigiLocker verification
-        if (docUri) {
-            return await verifyAadhaarFromDigiLocker(accessToken, docUri);
-        } else {
-            // Fetch documents list and verify
-            const documents = await fetchAadhaarDocument(accessToken);
-            const aadhaarDoc = documents.items?.find(doc =>
-                doc.type === 'ADHAR' || doc.doctype === 'AADHAAR'
-            );
-
-            if (!aadhaarDoc) {
-                throw new Error('Aadhaar document not found in DigiLocker');
-            }
-
-            return await verifyAadhaarFromDigiLocker(accessToken, aadhaarDoc.uri);
-        }
-
-    } catch (error) {
-        console.error('Aadhaar verification error:', error.message);
-
-        // Fallback to simulation in case of error
-        console.warn('⚠️  Falling back to simulation mode');
-        return await simulateDigiLockerVerification(aadhaarNumber, name);
+    if (mockMode) {
+      console.log('🔍 Using DigiLocker mock mode for verification...');
+      return await simulateDigiLockerVerification(aadhaarNumber, name);
     }
+
+    // Check if DigiLocker is configured
+    const isConfigured = DIGILOCKER_CONFIG.clientId !== 'YOUR_CLIENT_ID' &&
+        DIGILOCKER_CONFIG.clientSecret !== 'YOUR_CLIENT_SECRET';
+
+    if (!isConfigured) {
+      console.log('⚠️  DigiLocker API credentials not configured, falling back to mock mode...');
+      return await simulateDigiLockerVerification(aadhaarNumber, name);
+    }
+
+    if (!accessToken) {
+      throw new Error('Access token is required for DigiLocker verification');
+    }
+
+    console.log('🔍 Starting real DigiLocker verification...');
+
+    // Real DigiLocker verification
+    if (docUri) {
+      return await verifyAadhaarFromDigiLocker(accessToken, docUri);
+    } else {
+      // Fetch documents list and verify
+      const documents = await fetchAadhaarDocument(accessToken);
+      const aadhaarDoc = documents.items?.find(doc =>
+        doc.type === 'ADHAR' || doc.doctype === 'AADHAAR'
+      );
+
+      if (!aadhaarDoc) {
+        throw new Error('Aadhaar document not found in DigiLocker');
+      }
+
+      return await verifyAadhaarFromDigiLocker(accessToken, aadhaarDoc.uri);
+    }
+
+  } catch (error) {
+    console.error('❌ Aadhaar verification error:', error.message);
+
+    // Fallback to mock mode on any error
+    console.log('⚠️  Falling back to DigiLocker mock mode due to error...');
+    return await simulateDigiLockerVerification(aadhaarNumber, name);
+  }
 }
 
 /**

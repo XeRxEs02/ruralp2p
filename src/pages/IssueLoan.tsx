@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { GlassCard } from '@/components/ui/glass-card';
-import { loanApi } from '@/lib/api';
+import { enhancedLoanApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { DollarSign, Calendar, Percent, FileText } from 'lucide-react';
+import { DollarSign, Calendar, Percent, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const IssueLoan = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +16,12 @@ const IssueLoan = () => {
     purpose: '',
   });
   const [loading, setLoading] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [matchingInfo, setMatchingInfo] = useState<{
+    matched: boolean;
+    lenders: number;
+    compatibilityScore: number;
+  } | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,20 +36,37 @@ const IssueLoan = () => {
     }
 
     setLoading(true);
-    const response = await loanApi.create({
-      amount: parseFloat(formData.amount),
-      duration: parseInt(formData.duration),
-      interestRate: parseFloat(formData.interestRate),
-      purpose: formData.purpose,
-    });
-    setLoading(false);
+    setSubmitStatus('idle');
 
-    if (response.success) {
-      toast.success('Loan request submitted successfully!');
-      setFormData({ amount: '', duration: '', interestRate: '', purpose: '' });
-    } else {
-      toast.error(response.error || 'Failed to submit loan request');
+    try {
+      const response = await enhancedLoanApi.create({
+        totalAmount: parseFloat(formData.amount),
+        duration: parseInt(formData.duration),
+        averageInterestRate: parseFloat(formData.interestRate),
+        purpose: formData.purpose,
+      });
+
+      if (response.success) {
+        setSubmitStatus('success');
+        setMatchingInfo((response.data as any)?.matching);
+        toast.success('Loan request submitted and matched successfully!');
+
+        // Reset form after success
+        setTimeout(() => {
+          setFormData({ amount: '', duration: '', interestRate: '', purpose: '' });
+          setSubmitStatus('idle');
+          setMatchingInfo(null);
+        }, 3000);
+      } else {
+        setSubmitStatus('error');
+        toast.error(response.error || 'Failed to submit loan request');
+      }
+    } catch (error) {
+      setSubmitStatus('error');
+      toast.error('Network error occurred');
     }
+
+    setLoading(false);
   };
 
   return (

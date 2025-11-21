@@ -1,0 +1,28 @@
+[
+  {
+    "batch": "batch3_mixed_authenticity",
+    "description": "Mixed real and AI-generated faces for spoofing/authenticity detection testing",
+    "images": [
+      "backend/Test_Images/Custom Test/ai1.jpg",
+      "backend/Test_Images/Custom Test/WhatsApp Image 2025-11-18 at 11.36.56.jpeg",
+      "backend/Test_Images/Custom Test/ai2.jpg",
+      "backend/Test_Images/Custom Test/WhatsApp Image 2025-11-18 at 11.37.35.jpeg",
+      "backend/Test_Images/Custom Test/ai3.jpg",
+      "backend/Test_Images/Custom Test/WhatsApp Image 2025-11-18 at 11.39.22.jpeg",
+      "backend/Test_Images/Custom Test/ai4.jpg",
+      "backend/Test_Images/Custom Test/WhatsApp Image 2025-11-18 at 11.41.39.jpeg",
+      "backend/Test_Images/Custom Test/ai5.jpg",
+      "backend/Test_Images/Custom Test/WhatsApp Image 2025-11-18 at 11.44.48.jpeg"
+    ],
+    "expectedPurpose": "Test detection of AI-generated vs real human faces (spoofing prevention)",
+    "groundTruth": {
+      "ai1.jpg": "AI-generated",
+      "ai2.jpg": "AI-generated",
+      "ai3.jpg": "AI-generated",
+      "ai4.jpg": "AI-generated",
+      "ai5.jpg": "AI-generated",
+      "ai5.jpg": "AI-generated",
+      "real_faces": 5
+    }
+  }
+]
