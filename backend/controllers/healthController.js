@@ -169,7 +169,11 @@ class HealthController {
       res.status(503).json({
         status: 'error',
         timestamp: new Date().toISOString(),
-        uptime: this.getUptime(),
+        uptime: {
+          milliseconds: Date.now() - this.startTime,
+          seconds: Math.floor((Date.now() - this.startTime) / 1000),
+          human: this.formatUptime ? this.formatUptime(Math.floor((Date.now() - this.startTime) / 1000)) : 'Unknown'
+        },
         version: this.version,
         error: 'Health check failed',
         details: error.message
