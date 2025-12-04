@@ -178,11 +178,10 @@ const transactionSchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Indexes for better query performance
+  // Indexes for better query performance
 transactionSchema.index({ loanId: 1, type: 1 });
 transactionSchema.index({ borrowerId: 1, status: 1 });
 transactionSchema.index({ lenderId: 1, status: 1 });
-transactionSchema.index({ txnHash: 1 }, { sparse: true });
 transactionSchema.index({ initiatedAt: -1 });
 transactionSchema.index({ 'metadata.emiNumber': 1, loanId: 1 });
 

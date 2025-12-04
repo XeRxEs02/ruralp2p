@@ -164,11 +164,15 @@ class HealthController {
       }
 
     } catch (error) {
-      logger.errorWithContext(error, { endpoint: '/api/ready' });
+      logger.errorWithContext(error, { endpoint: '/api/health' });
+
       res.status(503).json({
         status: 'error',
         timestamp: new Date().toISOString(),
-        error: 'Readiness check failed'
+        uptime: this.getUptime(),
+        version: this.version,
+        error: 'Health check failed',
+        details: error.message
       });
     }
   }
